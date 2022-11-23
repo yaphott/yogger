@@ -1,0 +1,17 @@
+# Ignore everything
+*
+
+# Except
+!setup.py
+
+!yogger/
+!yogger/*
+!tests/
+!tests/*
+
+!LICENSE
+!NOTICE
+!README.md
+!.gitignore
+!.git/
+!.git/*
