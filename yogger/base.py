@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 import os
 import sys
@@ -178,6 +178,7 @@ def _repr(name: str, value: Any) -> str:
         str: Formatted representation of a value.
     """
     if _has_requests_package:
+        # Support for Requests package
         if type(value) is Response:
             return _requests_response_repr(name, value)
 
@@ -188,17 +189,23 @@ def _repr(name: str, value: Any) -> str:
             return _requests_exception_repr(name, value)
 
     if isinstance(value, dict):
+        # Multiline representation of dictionary
         return f"{name} = <{type(value).__module__}.{type(value).__name__}>\n  " + "\n  ".join(_repr(f"{name}[{k!r}]", v).replace("\n", "\n  ") for k, v in value.items())
 
     if isinstance(value, (list, tuple, collections.deque)) and not all(isinstance(v, (int, str)) for v in value):
+        # Multiline representation of list, tuple, and deque
         return f"{name} = <{type(value).__module__}.{type(value).__name__}>\n  " + "\n  ".join(_repr(f"{name}[{i}]", v).replace("\n", "\n  ") for i, v in enumerate(value))
 
     if dataclasses.is_dataclass(value):
+        # Multiline representation of dataclass
         return f"{name} = <{type(value).__module__}.{type(value).__name__}>\n  " + "\n  ".join(
             _repr(f"{name}.{f.name}", f.name) + " = " + _repr(f"{name}.{f.name}", getattr(value, f.name)).replace("\n", "\n  ") for f in dataclasses.fields(value)
         )
 
+    # Representation of other object
     value_repr = f"{name} = {value!r}"
+
+    # Indent if it is multiline
     if "\n" in value_repr:
         return "\\\n  " + value_repr.replace("\n", "\n  ")
 
@@ -208,8 +215,8 @@ def _repr(name: str, value: Any) -> str:
 def dump_stack_and_locals(
     trace: list[inspect.FrameInfo],
     *,
-    e: Optional[Exception] = None,
-    logfile_path: Optional[str] = None,
+    e: Exception | None = None,
+    logfile_path: str | None = None,
 ) -> str:
     """Dump the Stack and Locals to a File
 
@@ -266,7 +273,7 @@ def dump_stack_and_locals(
 
         f.write("\n")
 
-        # Record representations of locals
+        # Record representations of frames in trace
         modules = [inspect.getmodule(frame_record[0]) for frame_record in trace]
         for i, (module, frame_record) in enumerate(zip(modules, trace)):
             if module is None:
@@ -286,9 +293,9 @@ def dump_stack_and_locals(
                 f.write(f'Locals from file "{frame_record.filename}", line {frame_record.lineno}, in {frame_record.function}:\n')
                 for var_name in locals_:
                     variable = locals_[var_name]
-                    var_repr = _repr(var_name, variable)
+                    value_repr = _repr(var_name, variable)
                     f.write(f"  {var_name} {type(variable)} = ")
-                    f.write(var_repr.replace("\n", "\n  "))
+                    f.write(value_repr.replace("\n", "\n  "))
                     f.write("\n")
 
                 f.write("\n")

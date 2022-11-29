@@ -29,11 +29,11 @@ if sys.argv[-1] == "publish":
 
 
 def _globals_from_exec(filepath: str) -> dict:
-    _globals = {}
+    __globals = {}
     with open(filepath, mode="r", encoding="utf-8") as rf:
-        exec(rf.read(), _globals)
+        exec(rf.read(), __globals)
 
-    return _globals
+    return __globals
 
 
 here = os.path.abspath(os.path.dirname(__file__))

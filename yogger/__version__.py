@@ -4,6 +4,6 @@ __url__ = "https://github.com/yaphott/yogger"
 __version__ = "0.0.2"
 __build__ = 0x2
 __author__ = "yaphott"
-__author_email__ = "yaphott@gmail.com"
+__author_email__ = "yaphott@proton.me"
 __license__ = "Apache 2.0"
 __copyright__ = "Copyright 2022 Nicholas Londowski"
