@@ -7,6 +7,7 @@ import collections
 import contextlib
 import dataclasses
 import inspect
+import tempfile
 
 # Check if supported external packages are installed
 # NOTE: These are not required, but will be used during formatting if found.
@@ -21,7 +22,6 @@ except (NameError, ModuleNotFoundError):
     RequestException = Exception
     _has_requests_package = False
 
-import tempfile
 
 _logger = logging
 
@@ -45,10 +45,11 @@ class Yogger(logging.Logger):
     def _log_with_stack(self, level: int, *args: tuple, **kwargs: dict):
         super().log(level, *args, **kwargs)
 
+        # Dump current stack if 'dump_locals' was set to True
         if _global_dump_locals:
             stack = inspect.stack()
             if len(stack) > 2:
-                name = dump_stack_and_locals(stack[2:][::-1])
+                name = dump(stack[2:][::-1])
                 super().log(level, _DUMP_MSG.format(name=name))
 
     def warning(self, *args: tuple, **kwargs: dict):
@@ -93,20 +94,20 @@ def _requests_request_repr(
     Returns:
         str: Formatted representation of a requests.Request object.
     """
-    msg = ""
-    msg += f"{name} = {request!r}"
-    msg += f"\n  {name}.method = {request.method}"
-    msg += f"\n  {name}.url = {request.url}"
-    msg += f"\n  {name}.headers = \\"
+    req_repr = ""
+    req_repr += f"{name} = {request!r}"
+    req_repr += f"\n  {name}.method = {request.method}"
+    req_repr += f"\n  {name}.url = {request.url}"
+    req_repr += f"\n  {name}.headers = \\"
     for field in request.headers:
-        msg += f'\n    {field} = {_repr("_", request.headers[field])}'
+        req_repr += f'\n    {field} = {_repr("_", request.headers[field])}'
 
     for attr in ("body", "params", "data"):
         if hasattr(request, attr) and getattr(request, attr):
-            msg += f"\n  {name}.{attr} = "
-            msg += _repr("_", getattr(request, attr)).replace("\n", "\n  ")
+            req_repr += f"\n  {name}.{attr} = "
+            req_repr += _repr("_", getattr(request, attr)).replace("\n", "\n  ")
 
-    return msg
+    return req_repr
 
 
 def _requests_response_repr(
@@ -125,26 +126,26 @@ def _requests_response_repr(
     Returns:
         str: Formatted representation of a requests.Response object.
     """
-    msg = ""
-    msg += f"{name} = {response!r}"
-    msg += f"\n  {name}.url = {response.url}"
-    msg += f"\n  {name}.request = "
-    msg += _repr("_", response.request).replace("\n", "\n  ")
+    resp_repr = ""
+    resp_repr += f"{name} = {response!r}"
+    resp_repr += f"\n  {name}.url = {response.url}"
+    resp_repr += f"\n  {name}.request = "
+    resp_repr += _repr("_", response.request).replace("\n", "\n  ")
     if with_history and response.history:
-        msg += f"\n  {name}.history = ["
+        resp_repr += f"\n  {name}.history = ["
         for prev_resp in response.history:
-            msg += "\n    "
-            msg += _requests_response_repr("_", prev_resp, with_history=False).replace("\n", "\n    ")
+            resp_repr += "\n    "
+            resp_repr += _requests_response_repr("_", prev_resp, with_history=False).replace("\n", "\n    ")
 
-        msg += "\n  ]"
+        resp_repr += "\n  ]"
 
-    msg += f"\n  {name}.status_code = {response.status_code}"
-    msg += f"\n  {name}.headers = \\"
+    resp_repr += f"\n  {name}.status_code = {response.status_code}"
+    resp_repr += f"\n  {name}.headers = \\"
     for field in response.headers:
-        msg += f'\n    {field} = {_repr("_", response.headers[field])}'
+        resp_repr += f'\n    {field} = {_repr("_", response.headers[field])}'
 
-    msg += f'\n  {name}.content = {_repr("_", response.content)}'
-    return msg
+    resp_repr += f'\n  {name}.content = {_repr("_", response.content)}'
+    return resp_repr
 
 
 def _requests_exception_repr(
@@ -160,11 +161,11 @@ def _requests_exception_repr(
     Returns:
         str: Formatted representation of a Requests exception.
     """
-    msg = ""
-    msg += f"{name} = {e!r}"
-    msg += "\n  " + _repr(f"{name}.request", e.request).replace("\n", "\n  ")
-    msg += "\n  " + _repr(f"{name}.response", e.response).replace("\n", "\n  ")
-    return msg
+    e_repr = ""
+    e_repr += f"{name} = {e!r}"
+    e_repr += "\n  " + _repr(f"{name}.request", e.request).replace("\n", "\n  ")
+    e_repr += "\n  " + _repr(f"{name}.response", e.response).replace("\n", "\n  ")
+    return e_repr
 
 
 def _repr(name: str, value: Any) -> str:
@@ -212,16 +213,83 @@ def _repr(name: str, value: Any) -> str:
     return value_repr
 
 
-def dump_stack_and_locals(
-    trace: list[inspect.FrameInfo],
+def dumps(
+    stack: list[inspect.FrameInfo],
+    *,
+    e: Exception | None = None,
+) -> str:
+    """Create a String Representation of an Interpreter Stack
+
+    Args:
+        stack (list[inspect.FrameInfo]): Stack to represent.
+        e (Exception, optional): Exception that was raised. Defaults to None.
+
+    Returns:
+        str: Representation of the stack.
+    """
+    stack_repr = ""
+
+    # Record the cause exception
+    if e is not None:
+        stack_repr += "Exception:\n"
+        stack_repr += f"  {type(e).__module__}.{type(e).__name__}: {e!s}\n"
+        stack_repr += f"  args: {e.args!r}\n"
+        stack_repr += "\n"
+
+    # Record the code constack_reprs
+    stack_repr += "Stack:\n"
+    for frame_record in stack:
+        stack_repr += f'  File "{frame_record.filename}", line {frame_record.lineno}, in {frame_record.function}\n'
+        if frame_record.code_constack_repr is not None:
+            for line in frame_record.code_constack_repr:
+                stack_repr += f"    {line.strip()}\n"
+
+    stack_repr += "\n"
+
+    # Record representations of frames in stack
+    modules = [inspect.getmodule(frame_record[0]) for frame_record in stack]
+    for i, (module, frame_record) in enumerate(zip(modules, stack)):
+        if module is None:
+            # Moduleless frame, e.g. dataclass.__init__
+            for j in reversed(range(i)):
+                if modules[j] is not None:
+                    break
+            else:
+                # No previous module scope
+                continue
+
+            module = modules[j]
+
+        # Only frames relating to the user's package
+        if module.__name__.startswith(f"{_global_package_name}.") or (module.__name__ == _global_package_name):
+            locals_ = frame_record[0].f_locals
+            stack_repr += f'Locals from file "{frame_record.filename}", line {frame_record.lineno}, in {frame_record.function}:\n'
+            for var_name in locals_:
+                variable = locals_[var_name]
+                value_repr = _repr(var_name, variable)
+                stack_repr += f"  {var_name} {type(variable)} = "
+                stack_repr += value_repr.replace("\n", "\n  ")
+                stack_repr += "\n"
+
+            stack_repr += "\n"
+            if ("self" in locals_) and hasattr(locals_["self"], "__dict__"):
+                stack_repr += "Object dict:\n"
+                stack_repr += repr(locals_["self"].__dict__)
+                stack_repr += "\n\n"
+
+    return stack_repr
+
+
+def dump(
+    stack: list[inspect.FrameInfo],
     *,
     e: Exception | None = None,
     logfile_path: str | None = None,
 ) -> str:
-    """Dump the Stack and Locals to a File
+    """Dump a Representation of an Interpreter Stack and Exception (if Provided) to File
 
     Args:
-        trace (list[inspect.FrameInfo]): Trace to dump.
+        stack (list[inspect.FrameInfo]): Stack to dump.
         e (Exception, optional): Exception that was raised. Defaults to None.
         logfile_path (str, optional): Custom path to use for logfile. Defaults to None.
 
@@ -256,54 +324,8 @@ def dump_stack_and_locals(
             f = tempfile.NamedTemporaryFile("w", prefix=f"{base_filename}_", delete=False)
 
     try:
-        # Record the cause exception
-        if e is not None:
-            f.write("Exception:\n")
-            f.write(f"  {type(e).__module__}.{type(e).__name__}: {e!s}\n")
-            f.write(f"  args: {e.args!r}\n")
-            f.write("\n")
-
-        # Record the code contexts
-        f.write("Stack:\n")
-        for frame_record in trace:
-            f.write(f'  File "{frame_record.filename}", line {frame_record.lineno}, in {frame_record.function}\n')
-            if frame_record.code_context is not None:
-                for line in frame_record.code_context:
-                    f.write(f"    {line.strip()}\n")
-
-        f.write("\n")
-
-        # Record representations of frames in trace
-        modules = [inspect.getmodule(frame_record[0]) for frame_record in trace]
-        for i, (module, frame_record) in enumerate(zip(modules, trace)):
-            if module is None:
-                # Moduleless frame, e.g. dataclass.__init__
-                for j in reversed(range(i)):
-                    if modules[j] is not None:
-                        break
-                else:
-                    # No previous module scope
-                    continue
-
-                module = modules[j]
-
-            # Only dump locals
-            if module.__name__.startswith(f"{_global_package_name}.") or (module.__name__ == _global_package_name):
-                locals_ = frame_record[0].f_locals
-                f.write(f'Locals from file "{frame_record.filename}", line {frame_record.lineno}, in {frame_record.function}:\n')
-                for var_name in locals_:
-                    variable = locals_[var_name]
-                    value_repr = _repr(var_name, variable)
-                    f.write(f"  {var_name} {type(variable)} = ")
-                    f.write(value_repr.replace("\n", "\n  "))
-                    f.write("\n")
-
-                f.write("\n")
-                if ("self" in locals_) and hasattr(locals_["self"], "__dict__"):
-                    f.write("Object dict:\n")
-                    f.write(repr(locals_["self"].__dict__))
-                    f.write("\n\n")
-
+        # Create a string representation of the stack
+        f.write(dumps(stack, e=e))
         # Location of log file
         name = f.name
     finally:
@@ -314,13 +336,16 @@ def dump_stack_and_locals(
 
 @contextlib.contextmanager
 def dump_on_exception() -> None:
-    """Content Manager that Dumps if an Exception is Raised"""
+    """Content Manager to Dump if an Exception is Raised
+
+    Writes a representation of the exception and trace stack to file.
+    """
     try:
         yield
     except Exception as e:
         trace = inspect.trace()
         if len(trace) > 1:
-            name = dump_stack_and_locals(trace[1:], e=e)
+            name = dump(trace[1:], e=e)
             _logger.fatal(_DUMP_MSG.format(name=name))
 
         raise
@@ -349,9 +374,9 @@ def configure(
     """Prepare for Logging
 
     Args:
-        package_name (str): Name of the package to dump from trace stack.
+        package_name (str): Name of the package to dump from the stack.
         verbosity (int, optional): Level of verbosity (0-2 using current implementation). Defaults to 0.
-        dump_locals (bool, optional): Dump local variables when logging level is warning or higher. Defaults to False.
+        dump_locals (bool, optional): Dump the caller's stack when logging with a level of warning or higher. Defaults to False.
         persist_log (bool, optional): Create the logfile in the current working directory instead of "/tmp". Defaults to False.
     """
     # Currently, the user is allowed to run configure multiple times.
