@@ -5,7 +5,6 @@
 !__init__.py
 !__version__.py
 !base.py
-mixins.py
 
 !.gitignore
 !.git/

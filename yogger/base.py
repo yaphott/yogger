@@ -2,6 +2,8 @@ from typing import Any
 
 import os
 import sys
+import io
+import sys
 import logging
 import collections
 import contextlib
@@ -26,10 +28,13 @@ except (NameError, ModuleNotFoundError):
 _logger = logging
 
 _global_package_name = None
+_global_dump_path = None
 _global_dump_locals = False
-_global_persist_log = False
 
-# NOTE: Support for colors will be added to Windows later.
+
+# NOTE: Support for colors will be added for Windows later.
+_LOG_FMT = "[ {asctime}.{msecs:04.0f}  \33[1m{levelname}\33[0m  {name} ]  {message}"
+_DATE_FMT = "%Y-%m-%d %H:%M:%S"
 _DUMP_MSG = "".join(
     (
         "\n\n",
@@ -49,7 +54,7 @@ class Yogger(logging.Logger):
         if _global_dump_locals:
             stack = inspect.stack()
             if len(stack) > 2:
-                name = dump(stack[2:][::-1])
+                name = _dump(stack[2:][::-1], e=None, dump_path=None)
                 super().log(level, _DUMP_MSG.format(name=name))
 
     def warning(self, *args: tuple, **kwargs: dict):
@@ -70,21 +75,13 @@ class Yogger(logging.Logger):
 
 def install() -> None:
     """Install the Yogger Logger Class and Instantiate the Global Logger"""
-    # Currently, the user is allowed to run install multiple times
-    # if check_installed():
-    #     raise RuntimeError("Logging is already using Yogger class")
-
-    # Change to use Yogger class
     logging.setLoggerClass(Yogger)
 
     global _logger
     _logger = logging.getLogger(__name__)
 
 
-def _requests_request_repr(
-    name: str,
-    request: Request,
-) -> str:
+def _requests_request_repr(name: str, request: Request) -> str:
     """Representation of a requests.Request Object
 
     Args:
@@ -121,7 +118,7 @@ def _requests_response_repr(
     Args:
         name (str): Name of the Requests response.
         response (requests.Response): Response object from the Requests module.
-        with_history (bool): Include the request redirect history in the representation. Defaults to True.
+        with_history (bool): Include the request redirect history in the representation (not yet accessable to user). Defaults to True.
 
     Returns:
         str: Formatted representation of a requests.Response object.
@@ -148,10 +145,7 @@ def _requests_response_repr(
     return resp_repr
 
 
-def _requests_exception_repr(
-    name: str,
-    e: RequestException,
-) -> str:
+def _requests_exception_repr(name: str, e: RequestException) -> str:
     """Formatted Representation of a requests.exceptions.RequestException
 
     Args:
@@ -169,14 +163,14 @@ def _requests_exception_repr(
 
 
 def _repr(name: str, value: Any) -> str:
-    """Formatted Representation of a Variable Name and Value
+    """Formatted Representation of a Variable's Name and Value
 
     Args:
         name (str): Name of the variable to represent.
         value (Any): Value to represent.
 
     Returns:
-        str: Formatted representation of a value.
+        str: Formatted representation of a variable.
     """
     if _has_requests_package:
         # Support for Requests package
@@ -204,49 +198,46 @@ def _repr(name: str, value: Any) -> str:
         )
 
     # Representation of other object
-    value_repr = f"{name} = {value!r}"
+    other_repr = f"{name} = {value!r}"
 
     # Indent if it is multiline
-    if "\n" in value_repr:
-        return "\\\n  " + value_repr.replace("\n", "\n  ")
+    if "\n" in other_repr:
+        return "\\\n  " + other_repr.replace("\n", "\n  ")
 
-    return value_repr
+    return other_repr
 
 
-def dumps(
+def _exception_dumps(e: Exception) -> str:
+    """Create a String Representation of an Exception
+
+    Args:
+        e (Exception): Exception that was raised.
+
+    Returns:
+        str: Representation of the stack.
+    """
+    e_repr = ""
+    e_repr += "Exception:\n"
+    e_repr += f"  {type(e).__module__}.{type(e).__name__}: {e!s}\n"
+    e_repr += f"  args: {e.args!r}\n"
+    e_repr += "\n"
+    return e_repr
+
+
+def _stack_dumps(
     stack: list[inspect.FrameInfo],
-    *,
-    e: Exception | None = None,
+    package_name: str | None = None,
 ) -> str:
-    """Create a String Representation of an Interpreter Stack
+    """Create a String Representation of Frames in a Stack
 
     Args:
         stack (list[inspect.FrameInfo]): Stack to represent.
-        e (Exception, optional): Exception that was raised. Defaults to None.
+        package_name (str, optional): Name of the package to dump from the stack, otherwise non-exclusive if set to None. Defaults to None.
 
     Returns:
         str: Representation of the stack.
     """
     stack_repr = ""
-
-    # Record the cause exception
-    if e is not None:
-        stack_repr += "Exception:\n"
-        stack_repr += f"  {type(e).__module__}.{type(e).__name__}: {e!s}\n"
-        stack_repr += f"  args: {e.args!r}\n"
-        stack_repr += "\n"
-
-    # Record the code constack_reprs
-    stack_repr += "Stack:\n"
-    for frame_record in stack:
-        stack_repr += f'  File "{frame_record.filename}", line {frame_record.lineno}, in {frame_record.function}\n'
-        if frame_record.code_constack_repr is not None:
-            for line in frame_record.code_constack_repr:
-                stack_repr += f"    {line.strip()}\n"
-
-    stack_repr += "\n"
-
-    # Record representations of frames in stack
     modules = [inspect.getmodule(frame_record[0]) for frame_record in stack]
     for i, (module, frame_record) in enumerate(zip(modules, stack)):
         if module is None:
@@ -260,8 +251,8 @@ def dumps(
 
             module = modules[j]
 
-        # Only frames relating to the user's package
-        if module.__name__.startswith(f"{_global_package_name}.") or (module.__name__ == _global_package_name):
+        # Only frames relating to the user's package if package_name is provided
+        if (package_name is None) or module.__name__.startswith(f"{package_name}.") or (module.__name__ == package_name):
             locals_ = frame_record[0].f_locals
             stack_repr += f'Locals from file "{frame_record.filename}", line {frame_record.lineno}, in {frame_record.function}:\n'
             for var_name in locals_:
@@ -280,63 +271,72 @@ def dumps(
     return stack_repr
 
 
-def dump(
-    stack: list[inspect.FrameInfo],
-    *,
-    e: Exception | None = None,
-    logfile_path: str | None = None,
-) -> str:
-    """Dump a Representation of an Interpreter Stack and Exception (if Provided) to File
+def dump(file_obj: io.TextIOBase, stack: list[inspect.FrameInfo]) -> str:
+    """Write the Representation of an Interpreter Stack using a File Object
 
     Args:
-        stack (list[inspect.FrameInfo]): Stack to dump.
-        e (Exception, optional): Exception that was raised. Defaults to None.
-        logfile_path (str, optional): Custom path to use for logfile. Defaults to None.
+        file_obj (str | io.TextIOBase | io.BufferedIOBase): File object to use for writing.
+        stack (list[inspect.FrameInfo]): Stack of frames to dump.
+    """
+    file_obj.write(dumps(stack))
+
+
+def dumps(stack: list[inspect.FrameInfo]) -> str:
+    """Create a String Representation of an Interpreter Stack
+
+    Externalizes '_stack_dumps' to be accessed by the user.
+
+    Args:
+        stack (list[inspect.FrameInfo]): Stack of frames to represent.
 
     Returns:
-        str: Path of the resulting logfile.
+        str: Representation of the stack.
     """
-    # Currently, the user is allowed to run install multiple times.
-    # _ensure_installed()
+    return _stack_dumps(stack, package_name=None)
 
-    # Currently, the user is allowed to run configure multiple times.
-    # _ensure_configured()
 
-    base_filename = f"{_global_package_name}_stack_and_locals"
-    if logfile_path is not None:
-        # User-provided file path
-        f = open(
-            os.path.abspath(logfile_path) if not os.path.isabs(logfile_path) else logfile_path,
-            # Overwrite if not persisting log
-            mode="a" if _global_persist_log else "w",
-            encoding="utf-8",
-        )
+def _dump(
+    stack: list[inspect.FrameInfo],
+    e: Exception,
+    dump_path: str | bytes | os.PathLike,
+) -> str:
+    """Internal Function to Dump the Representation of the Interpreter Stack and Exception to File
+
+    Args:
+        stack (list[inspect.FrameInfo]): Stack of frames to dump.
+        e (Exception): Exception that was raised.
+        dump_path (str | bytes | os.PathLike | None): Overridden file path to use for the dump.
+
+    Returns:
+        str: Path of the resulting dump.
+    """
+    dump_repr = _stack_dumps(stack, package_name=_global_package_name) + "\n" + _exception_dumps(e)
+    user_dump_path = dump_path or _global_dump_path
+    if user_dump_path is not None:
+        # User-provided path (assigned when user ran configure, or overridden in this method)
+        with open(_resolve_path(user_dump_path), mode="a", encoding="utf-8") as wf:
+            wf.write(dump_repr)
+            return wf.name
     else:
-        if _global_persist_log:
-            # Current working directory
-            f = open(
-                os.path.join(os.getcwd(), f"{base_filename}.log"),
-                mode="a",
-                encoding="utf-8",
-            )
-        else:
-            # Temporary directory
-            f = tempfile.NamedTemporaryFile("w", prefix=f"{base_filename}_", delete=False)
-
-    try:
-        # Create a string representation of the stack
-        f.write(dumps(stack, e=e))
-        # Location of log file
-        name = f.name
-    finally:
-        f.close()
-
-    return name
+        # Temporary file
+        with tempfile.NamedTemporaryFile(
+            "w",
+            # Fix the prefix if the user forgot to run 'configure'
+            prefix=f"{_global_package_name}_stack_and_locals" if _global_package_name is not None else "stack_and_locals",
+            delete=False,
+        ) as wf:
+            wf.write(dump_repr)
+            return wf.name
 
 
 @contextlib.contextmanager
-def dump_on_exception() -> None:
+def dump_on_exception(
+    dump_path: str | bytes | os.PathLike | None = None,
+) -> None:
     """Content Manager to Dump if an Exception is Raised
+
+    Args:
+        dump_path (str | bytes | os.PathLike, optional): Override the file path to use for the dump. Defaults to None.
 
     Writes a representation of the exception and trace stack to file.
     """
@@ -345,23 +345,24 @@ def dump_on_exception() -> None:
     except Exception as e:
         trace = inspect.trace()
         if len(trace) > 1:
-            name = dump(trace[1:], e=e)
+            name = _dump(trace[1:], e=e, dump_path=dump_path)
             _logger.fatal(_DUMP_MSG.format(name=name))
 
         raise
 
 
-def _set_levels(root_logger: logging.Logger, level: int) -> None:
-    root_logger.setLevel(level)
-    for handler in root_logger.handlers:
-        _logger.debug(f"Setting log level to {level} for handler: {handler.name}")
+def _set_levels(logger: logging.Logger, level: int) -> None:
+    logger.setLevel(level)
+    for handler in logger.handlers:
+        _logger.debug(f"Logger: {logger.name} - Setting log level for {handler.name} to {level}")
         handler.setLevel(level)
 
 
-def _remove_handlers(root_logger: logging.Logger) -> None:
-    for handler in root_logger.handlers:
-        _logger.debug(f"Removing handler: {handler.name}")
-        root_logger.removeHandler(handler)
+def _remove_handlers(logger: logging.Logger) -> None:
+    """Remove All Handlers from an Instantiated Logger"""
+    for handler in logger.handlers:
+        _logger.debug(f"Logger: {logger.name} - Removing handler: {handler.name}")
+        logger.removeHandler(handler)
 
 
 def configure(
@@ -369,53 +370,68 @@ def configure(
     *,
     verbosity: int = 0,
     dump_locals: bool = False,
-    persist_log: bool = False,
+    dump_path: str | bytes | os.PathLike | None = None,
 ) -> None:
     """Prepare for Logging
 
     Args:
         package_name (str): Name of the package to dump from the stack.
-        verbosity (int, optional): Level of verbosity (0-2 using current implementation). Defaults to 0.
+        verbosity (int, optional): Level of verbosity (0-2) for log messages. Defaults to 0.
         dump_locals (bool, optional): Dump the caller's stack when logging with a level of warning or higher. Defaults to False.
-        persist_log (bool, optional): Create the logfile in the current working directory instead of "/tmp". Defaults to False.
+        dump_path (str | bytes | os.PathLike, optional): Custom path to use when dumping with 'dump_on_exception' or when 'dump_locals=True', otherwise use a temporary path if None. Defaults to None.
     """
-    # Currently, the user is allowed to run configure multiple times.
-    # if not check_configured():
-    #     ...
-
-    # Currently, the user is allowed to run install multiple times.
-    # _ensure_installed()
-
     global _global_package_name
     _global_package_name = package_name
 
     global _global_dump_locals
     _global_dump_locals = dump_locals
 
-    global _global_persist_log
-    _global_persist_log = persist_log
+    if dump_path is not None:
+        global _global_dump_path
+        _global_dump_path = _resolve_path(dump_path)
 
+    # Get the root logger
     root_logger = logging.getLogger()
 
     # Set logging levels using verbosity
     if verbosity > 0:
         _set_levels(root_logger, logging.INFO if verbosity == 1 else logging.DEBUG)
 
-    # Create formatter
-    formatter = logging.Formatter(
-        fmt="[ {asctime}.{msecs:04.0f}  \33[1m{levelname}\33[0m  {name} ]  {message}",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        style="{",
-    )
-
     # Remove existing handlers
     _remove_handlers(root_logger)
 
     # Add a new stream handler
     handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
+    handler.setFormatter(logging.Formatter(fmt=_LOG_FMT, datefmt=_DATE_FMT, style="{"))
     root_logger.addHandler(handler)
 
     # Set logging level for third-party libraries
     logging.getLogger("requests").setLevel(logging.INFO if verbosity <= 1 else logging.DEBUG)
     logging.getLogger("urllib3").setLevel(logging.INFO if verbosity <= 1 else logging.DEBUG)
+
+
+def _resolve_path(path: str | bytes | os.PathLike) -> str:
+    """Stringify and Resolve Path-Like Objects
+
+    Args:
+        path (str | bytes | os.PathLike): Path-like object to resolve.
+
+    Returns:
+        str: Resolved path-like object.
+    """
+    if isinstance(path, bytes):
+        path = path.decode("utf-8")
+    elif not isinstance(path, str):
+        try:
+            path = path.__fspath__()
+        except AttributeError:
+            raise TypeError(f"Object is not path-like: {path!r}")
+
+    # Expand "~" and "~user" constructions
+    path = os.path.expanduser(path)
+
+    # Make absolute if not already
+    if not os.path.isabs(path):
+        path = os.path.abspath(path)
+
+    return path

@@ -1,4 +1,5 @@
 from .base import (
+    Yogger,
     install,
     configure,
     dump_on_exception,

@@ -96,7 +96,7 @@ Install the logger class and configure with your package name:
 ```python
 def _cli():
     yogger.install()
-    yogger.configure(__name__)
+    yogger.configure(__name__, verbosity=1)
 ```
 
 ### About the `package_name` parameter
@@ -122,11 +122,19 @@ Why is that? The application will work even with `__name__`, thanks to how resou
 Using the `dump_on_exception` **context manager** dumps the exception and trace if an exception is raised:
 
 ```python
-with yogger.dump_on_exception():
+with yogger.dump_on_exception(=):
     raise SomeException
 ```
 
-This is equivalent to running:
+```python
+with yogger.dump_on_exception(
+    # Uncomment to override
+    # dump_path="./stack_dump.tmp",
+):
+    raise SomeException
+```
+
+This is equivalent to:
 
 ```python
 import inspect
@@ -138,34 +146,13 @@ try:
 except Exception as e:
     trace = inspect.trace()
     if len(trace) > 1:
-        logfile_path = yogger.dump(trace[1:], e=e)
-```
-
-Example of output:
-
-```text
-[ 2022-11-17 10:16:09.0918  CRITICAL  yogger.base ]
-Dumped stack and locals to '/tmp/my_package_stack_and_locals_hp0ngc90'
-
-Copy and paste the following to view:
-    cat '/tmp/my_package_stack_and_locals_hp0ngc90'
-
-Traceback (most recent call last):
-  File "<stdin>", line 2, in <module>
-SomeException
-```
-
-To quickly view the contents, run the bash command from the log message:
-
-> Example here is from the log message above.
-
-```Bash
-cat '/tmp/my_package_stack_and_locals_hp0ngc90'
+        with open("./stack_dump.tmp", mode="a", encoding="utf-8") as f:
+            yogger.dump(f, trace[1:])
 ```
 
 ### Stacks
 
-Setting `dump_locals=True` dumps a representation of the caller's stack upon logging with a level of warning or higher.
+Setting `dump_locals=True` when running `yogger.configure` dumps a representation of the caller's stack upon logging with a level of warning or higher.
 
 To manually dump the stack, something like this would suffice:
 
@@ -176,15 +163,16 @@ import inspect
 ```python
 stack = inspect.stack()
 if len(stack) > 2:
-    file_path = yogger.dump(stack[2:][::-1])
+    with open("./example.log", mode="w", encoding="utf-8") as f:
+        yogger.dump(f, stack[2:][::-1])
 ```
 
-The log file path may be specified by providing the `logfile_path` keyword argument:
+If you simply want the string representation, use the `yogger.dumps` function:
 
 ```python
 stack = inspect.stack()
 if len(stack) > 2:
-    yogger.dump(stack[2:][::-1], logfile_path="./example.log")
+    trace_repr = yogger.dumps(stack[2:][::-1])
 ```
 
 ---
@@ -207,52 +195,50 @@ Function to install the logger class and instantiate the global logger.
 
 Function to prepare for logging.
 
-| Function Signature                                                             |
-| :----------------------------------------------------------------------------- |
-| configure(package_name, \*, verbosity=0, dump_locals=False, persist_log=False) |
+| Function Signature                                                          |
+| :-------------------------------------------------------------------------- |
+| configure(package_name, \*, verbosity=0, dump_locals=False, dump_path=None) |
 
-| Parameters              |                                                                         |
-| :---------------------- | :---------------------------------------------------------------------- |
-| **package_name**_(str)_ | Name of the package to dump from the stack.                             |
-| **verbosity**_(int)_    | Level of verbosity (0-2).                                               |
-| **dump_locals**_(bool)_ | Dump the caller's stack when logging with a level of warning or higher. |
-| **persist_log**_(bool)_ | Create the logfile in the current working directory instead of "/tmp".  |
+| Parameters                                           |                                                                                                                              |
+| :--------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| **package_name**_(str)_                              | Name of the package to dump from the stack.                                                                                  |
+| **verbosity**_(int)_                                 | Level of verbosity (0-2) for log messages.                                                                                   |
+| **dump_locals**_(bool)_                              | Dump the caller's stack when logging with a level of warning or higher.                                                      |
+| **dump_path**_(str \| bytes \| os.PathLike \| None)_ | Custom path to use when dumping with `dump_on_exception` or when `dump_locals=True`, otherwise use a temporary path if None. |
 
 ### yogger.dump_on_exception
 
 Context manager to dump a representation of the exception and trace stack to file if an exception is raised.
 
-| Function Signature  |
-| :------------------ |
-| dump_on_exception() |
+| Function Signature                |
+| :-------------------------------- |
+| dump_on_exception(dump_path=None) |
 
-| Parameters |
-| :--------- |
-| Empty      |
+| Parameters                                           |                                             |
+| :--------------------------------------------------- | :------------------------------------------ |
+| **dump_path**_(str \| bytes \| os.PathLike \| None)_ | Override the file path to use for the dump. |
 
 ### yogger.dump
 
-Function to dump a representation of an interpreter stack and exception (if provided) to file.
+Function to write the representation of an interpreter stack using a file object.
 
-| Function Signature                         |
-| :----------------------------------------- |
-| dump(stack, \*, e=None, logfile_path=None) |
+| Function Signature    |
+| :-------------------- |
+| dump(file_obj, stack) |
 
-| Parameters                           |                                 |
-| :----------------------------------- | :------------------------------ |
-| **stack**_(list[inspect.FrameInfo])_ | Stack to dump                   |
-| **e**_(Exception)_                   | Exception that was raised.      |
-| **logfile_path**_(str)_              | Custom path to use for logfile. |
+| Parameters                                                |                                 |
+| :-------------------------------------------------------- | :------------------------------ |
+| **file_obj**_(str \| io.TextIOBase \| io.BufferedIOBase)_ | File object to use for writing. |
+| **stack**_(list[inspect.FrameInfo])_                      | Stack of frames to dump.        |
 
 ### yogger.dumps
 
-Function to create a string representation of an interpreter stack and exception (if provided).
+Function to create a string representation of an interpreter stack.
 
-| Function Signature       |
-| :----------------------- |
-| dumps(stack, \*, e=None) |
+| Function Signature |
+| :----------------- |
+| dumps(stack)       |
 
-| Parameters                           |                            |
-| :----------------------------------- | :------------------------- |
-| **stack**_(list[inspect.FrameInfo])_ | Stack to represent.        |
-| **e**_(Exception)_                   | Exception that was raised. |
+| Parameters                           |                               |
+| :----------------------------------- | :---------------------------- |
+| **stack**_(list[inspect.FrameInfo])_ | Stack of frames to represent. |
