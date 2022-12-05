@@ -127,14 +127,14 @@ def _requests_response_repr(
     name: str,
     response: Response,
     *,
-    with_history: bool = True,
+    include_history: bool = True,
 ) -> str:
     """Representation of a requests.Response Object
 
     Args:
         name (str): Name of the Requests response.
         response (requests.Response): Response object from the Requests module.
-        with_history (bool): Include the request redirect history in the representation (not yet accessable to user). Defaults to True.
+        include_history (bool): Include the request redirect history in the representation (not yet accessable to user). Defaults to True.
 
     Returns:
         str: Formatted representation of a requests.Response object.
@@ -144,11 +144,11 @@ def _requests_response_repr(
     resp_repr += f"\n  {name}.url = {response.url}"
     resp_repr += f"\n  {name}.request = "
     resp_repr += pformat("_", response.request).replace("\n", "\n  ")
-    if with_history and response.history:
+    if include_history and response.history:
         resp_repr += f"\n  {name}.history = ["
         for prev_resp in response.history:
             resp_repr += "\n    "
-            resp_repr += _requests_response_repr("_", prev_resp, with_history=False).replace("\n", "\n    ")
+            resp_repr += _requests_response_repr("_", prev_resp, include_history=False).replace("\n", "\n    ")
 
         resp_repr += "\n  ]"
 
