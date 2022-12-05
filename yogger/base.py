@@ -1,5 +1,4 @@
-from typing import Any
-
+# Copyright Nicholas Londowski 2022. Apache 2.0 license, see LICENSE file.
 import os
 import sys
 import io
@@ -10,6 +9,8 @@ import contextlib
 import dataclasses
 import inspect
 import tempfile
+
+from typing import Any
 
 # Check if supported external packages are installed
 # NOTE: These are not required, but will be used during formatting if found.
@@ -81,6 +82,21 @@ def install() -> None:
     _logger = logging.getLogger(__name__)
 
 
+def _apply_line_continuation(obj_repr: str) -> str:
+    """Prefix with a Backslash and Indent if Contains Any Newlines
+
+    Args:
+        obj_repr (str): Representation to apply line continuation to.
+
+    Returns:
+        str: String with line continuation and indent applied.
+    """
+    if "\n" in obj_repr:
+        "\\\n  " + obj_repr.replace("\n", "\n  ")
+
+    return obj_repr
+
+
 def _requests_request_repr(name: str, request: Request) -> str:
     """Representation of a requests.Request Object
 
@@ -97,12 +113,12 @@ def _requests_request_repr(name: str, request: Request) -> str:
     req_repr += f"\n  {name}.url = {request.url}"
     req_repr += f"\n  {name}.headers = \\"
     for field in request.headers:
-        req_repr += f'\n    {field} = {_repr("_", request.headers[field])}'
+        req_repr += f'\n    {field} = {pformat("_", request.headers[field])}'
 
     for attr in ("body", "params", "data"):
         if hasattr(request, attr) and getattr(request, attr):
             req_repr += f"\n  {name}.{attr} = "
-            req_repr += _repr("_", getattr(request, attr)).replace("\n", "\n  ")
+            req_repr += pformat("_", getattr(request, attr)).replace("\n", "\n  ")
 
     return req_repr
 
@@ -127,7 +143,7 @@ def _requests_response_repr(
     resp_repr += f"{name} = {response!r}"
     resp_repr += f"\n  {name}.url = {response.url}"
     resp_repr += f"\n  {name}.request = "
-    resp_repr += _repr("_", response.request).replace("\n", "\n  ")
+    resp_repr += pformat("_", response.request).replace("\n", "\n  ")
     if with_history and response.history:
         resp_repr += f"\n  {name}.history = ["
         for prev_resp in response.history:
@@ -139,9 +155,9 @@ def _requests_response_repr(
     resp_repr += f"\n  {name}.status_code = {response.status_code}"
     resp_repr += f"\n  {name}.headers = \\"
     for field in response.headers:
-        resp_repr += f'\n    {field} = {_repr("_", response.headers[field])}'
+        resp_repr += f'\n    {field} = {pformat("_", response.headers[field])}'
 
-    resp_repr += f'\n  {name}.content = {_repr("_", response.content)}'
+    resp_repr += f'\n  {name}.content = {pformat("_", response.content)}'
     return resp_repr
 
 
@@ -157,12 +173,70 @@ def _requests_exception_repr(name: str, e: RequestException) -> str:
     """
     e_repr = ""
     e_repr += f"{name} = {e!r}"
-    e_repr += "\n  " + _repr(f"{name}.request", e.request).replace("\n", "\n  ")
-    e_repr += "\n  " + _repr(f"{name}.response", e.response).replace("\n", "\n  ")
+    e_repr += "\n  " + pformat(f"{name}.request", e.request).replace("\n", "\n  ")
+    e_repr += "\n  " + pformat(f"{name}.response", e.response).replace("\n", "\n  ")
     return e_repr
 
 
-def _repr(name: str, value: Any) -> str:
+def _dict_repr(name: str, value: dict) -> str:
+    """Formatted Representation of a Dictionary Variable's Name and Value
+
+    Args:
+    name (str): Name of the dict to represent.
+    value (dict): Value to represent.
+
+    Returns:
+        str: Formatted representation of a dictionary variable.
+    """
+    dict_repr = ""
+    dict_repr += f"{name} = <{type(value).__module__}.{type(value).__name__}>\n  "
+    dict_repr += "\n  ".join(pformat(f"{name}[{k!r}]", v).replace("\n", "\n  ") for k, v in value.items())
+    return dict_repr
+
+
+def _object_container_repr(name: str, value: collections.abc.Collection) -> str:
+    """Formatted Representation of a Container of Object's Name and Value
+
+    Args:
+    name (str): Name of the collection variable to represent.
+    value (dict): Value to represent.
+
+    Returns:
+        str: Formatted representation of a collection variable variable.
+    """
+    cont_repr = ""
+    if all(isinstance(v, (int, str)) for v in value):
+        # Single line (all values are int or str)
+        cont_repr = f"{name} = {value!r}"
+    else:
+        # Multiple lines (not all values are int or str)
+        cont_repr += f"{name} = <{type(value).__module__}.{type(value).__name__}>\n  "
+        cont_repr += "\n  ".join(pformat(f"{name}[{i}]", v).replace("\n", "\n  ") for i, v in enumerate(value))
+
+    # Apply line continuation if contains any newlines
+    cont_repr = _apply_line_continuation(cont_repr)
+    return cont_repr
+
+
+def _dataclass_repr(name: str, value: dict) -> str:
+    """Formatted Representation of a Dataclass Variable's Name and Value
+
+    Args:
+    name (str): Name of the dataclass to represent.
+    value (dict): Value to represent.
+
+    Returns:
+        str: Formatted representation of a dataclass variable.
+    """
+    dataclass_repr = ""
+    dataclass_repr += f"{name} = <{type(value).__module__}.{type(value).__name__}>\n  "
+    dataclass_repr += "\n  ".join(
+        pformat(f"{name}.{f.name}", f.name) + " = " + pformat(f"{name}.{f.name}", getattr(value, f.name)).replace("\n", "\n  ") for f in dataclasses.fields(value)
+    )
+    return dataclass_repr
+
+
+def pformat(name: str, value: Any) -> str:
     """Formatted Representation of a Variable's Name and Value
 
     Args:
@@ -172,39 +246,33 @@ def _repr(name: str, value: Any) -> str:
     Returns:
         str: Formatted representation of a variable.
     """
+    # Support for Requests package
     if _has_requests_package:
-        # Support for Requests package
         if type(value) is Response:
+            # Requests response
             return _requests_response_repr(name, value)
-
         if type(value) in (PreparedRequest, Request):
+            # Requests request
             return _requests_request_repr(name, value)
-
         if isinstance(value, RequestException):
+            # Requests exception
             return _requests_exception_repr(name, value)
 
     if isinstance(value, dict):
-        # Multiline representation of dictionary
-        return f"{name} = <{type(value).__module__}.{type(value).__name__}>\n  " + "\n  ".join(_repr(f"{name}[{k!r}]", v).replace("\n", "\n  ") for k, v in value.items())
-
-    if isinstance(value, (list, tuple, collections.deque)) and not all(isinstance(v, (int, str)) for v in value):
-        # Multiline representation of list, tuple, and deque
-        return f"{name} = <{type(value).__module__}.{type(value).__name__}>\n  " + "\n  ".join(_repr(f"{name}[{i}]", v).replace("\n", "\n  ") for i, v in enumerate(value))
-
+        # Dictionary
+        return _dict_repr(name, value)
+    if isinstance(value, (list, tuple, set, collections.deque)):
+        # Container of objects (list, tuple, set, or deque)
+        return _object_container_repr(name, value)
     if dataclasses.is_dataclass(value):
-        # Multiline representation of dataclass
-        return f"{name} = <{type(value).__module__}.{type(value).__name__}>\n  " + "\n  ".join(
-            _repr(f"{name}.{f.name}", f.name) + " = " + _repr(f"{name}.{f.name}", getattr(value, f.name)).replace("\n", "\n  ") for f in dataclasses.fields(value)
-        )
+        # Dataclass
+        return _dataclass_repr(name, value)
 
-    # Representation of other object
-    other_repr = f"{name} = {value!r}"
-
-    # Indent if it is multiline
-    if "\n" in other_repr:
-        return "\\\n  " + other_repr.replace("\n", "\n  ")
-
-    return other_repr
+    # Other (also includes string, bytes, ranges, etc.)
+    obj_repr = f"{name} = {value!r}"
+    # Apply line continuation if contains any newlines
+    obj_repr = _apply_line_continuation(obj_repr)
+    return obj_repr
 
 
 def _exception_dumps(e: Exception) -> str:
@@ -256,10 +324,9 @@ def _stack_dumps(
             locals_ = frame_record[0].f_locals
             stack_repr += f'Locals from file "{frame_record.filename}", line {frame_record.lineno}, in {frame_record.function}:\n'
             for var_name in locals_:
-                variable = locals_[var_name]
-                value_repr = _repr(var_name, variable)
-                stack_repr += f"  {var_name} {type(variable)} = "
-                stack_repr += value_repr.replace("\n", "\n  ")
+                var_value = locals_[var_name]
+                stack_repr += f"  {var_name} {type(var_value)} = "
+                stack_repr += pformat(var_name, var_value).replace("\n", "\n  ")
                 stack_repr += "\n"
 
             stack_repr += "\n"
@@ -300,7 +367,7 @@ def _dump(
     e: Exception,
     dump_path: str | bytes | os.PathLike,
 ) -> str:
-    """Internal Function to Dump the Representation of the Interpreter Stack and Exception to File
+    """Internal Function to Dump the Representation of the Exception and Interpreter Stack to File
 
     Args:
         stack (list[inspect.FrameInfo]): Stack of frames to dump.

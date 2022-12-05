@@ -242,3 +242,16 @@ Function to create a string representation of an interpreter stack.
 | Parameters                           |                               |
 | :----------------------------------- | :---------------------------- |
 | **stack**_(list[inspect.FrameInfo])_ | Stack of frames to represent. |
+
+### yogger.pformat
+
+Function to create a string representation of a variable's name and value.
+
+| Function Signature   |
+| :------------------- |
+| pformat(name, value) |
+
+| Parameters       |                                    |
+| :--------------- | :--------------------------------- |
+| **name**_(str)_  | Name of the variable to represent. |
+| **value**_(str)_ | Value to represent.                |

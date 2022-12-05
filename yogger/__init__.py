@@ -1,3 +1,4 @@
+# Copyright Nicholas Londowski 2022. Apache 2.0 license, see LICENSE file.
 from .base import (
     Yogger,
     install,
@@ -5,6 +6,7 @@ from .base import (
     dump_on_exception,
     dump,
     dumps,
+    pformat,
 )
 from .__version__ import (
     __title__,
