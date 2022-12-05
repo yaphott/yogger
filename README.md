@@ -122,14 +122,9 @@ Why is that? The application will work even with `__name__`, thanks to how resou
 Using the `dump_on_exception` **context manager** dumps the exception and trace if an exception is raised:
 
 ```python
-with yogger.dump_on_exception(=):
-    raise SomeException
-```
-
-```python
 with yogger.dump_on_exception(
     # Uncomment to override
-    # dump_path="./stack_dump.tmp",
+    # dump_path="./stack_dump.txt",
 ):
     raise SomeException
 ```
@@ -146,7 +141,7 @@ try:
 except Exception as e:
     trace = inspect.trace()
     if len(trace) > 1:
-        with open("./stack_dump.tmp", mode="a", encoding="utf-8") as f:
+        with open("./stack_dump.txt", mode="a", encoding="utf-8") as f:
             yogger.dump(f, trace[1:])
 ```
 
