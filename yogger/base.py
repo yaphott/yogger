@@ -55,7 +55,7 @@ class Yogger(logging.Logger):
         if _global_dump_locals:
             stack = inspect.stack()
             if len(stack) > 2:
-                name = _dump(stack[2:][::-1], e=None, dump_path=None)
+                name = _dump(stack=stack[2:][::-1], e=None, dump_path=None)
                 super().log(level, _DUMP_MSG.format(name=name))
 
     def warning(self, *args: tuple, **kwargs: dict):
@@ -111,9 +111,14 @@ def _requests_request_repr(name: str, request: Request) -> str:
     req_repr += f"{name} = {request!r}"
     req_repr += f"\n  {name}.method = {request.method}"
     req_repr += f"\n  {name}.url = {request.url}"
-    req_repr += f"\n  {name}.headers = \\"
-    for field in request.headers:
-        req_repr += f'\n    {field} = {pformat("_", request.headers[field])}'
+    req_repr += f"\n  {name}.headers = "
+    if not request.headers:
+        # Empty or missing headers
+        req_repr += f"{request.headers!r}"
+    else:
+        req_repr += "\\"
+        for field in request.headers:
+            req_repr += f'\n    {field} = {pformat("_", request.headers[field])}'
 
     for attr in ("body", "params", "data"):
         if hasattr(request, attr) and getattr(request, attr):
@@ -153,9 +158,14 @@ def _requests_response_repr(
         resp_repr += "\n  ]"
 
     resp_repr += f"\n  {name}.status_code = {response.status_code}"
-    resp_repr += f"\n  {name}.headers = \\"
-    for field in response.headers:
-        resp_repr += f'\n    {field} = {pformat("_", response.headers[field])}'
+    resp_repr += f"\n  {name}.headers = "
+    if not response.headers:
+        # Empty or missing headers
+        resp_repr += f"{response.headers!r}"
+    else:
+        resp_repr += "\\"
+        for field in response.headers:
+            resp_repr += f'\n    {field} = {pformat("_", response.headers[field])}'
 
     resp_repr += f'\n  {name}.content = {pformat("_", response.content)}'
     return resp_repr
@@ -338,28 +348,45 @@ def _stack_dumps(
     return stack_repr
 
 
-def dump(file_obj: io.TextIOBase, stack: list[inspect.FrameInfo]) -> str:
+def dump(
+    file_obj: io.TextIOBase,
+    stack: list[inspect.FrameInfo],
+    *,
+    e: Exception | None = None,
+    package_name: str | None = None,
+) -> None:
     """Write the Representation of an Interpreter Stack using a File Object
 
     Args:
-        file_obj (str | io.TextIOBase | io.BufferedIOBase): File object to use for writing.
+        file_obj (io.TextIOBase): File object to use for writing.
         stack (list[inspect.FrameInfo]): Stack of frames to dump.
+        e (Exception, optional): Exception that was raised. Defaults to None.
+        package_name (str, optional): Name of the package to dump from the stack, otherwise non-exclusive if set to None. Defaults to None.
     """
-    file_obj.write(dumps(stack))
+    file_obj.write(dumps(stack, e=e, package_name=package_name))
 
 
-def dumps(stack: list[inspect.FrameInfo]) -> str:
+def dumps(
+    stack: list[inspect.FrameInfo],
+    *,
+    e: Exception | None = None,
+    package_name: str | None = None,
+) -> str:
     """Create a String Representation of an Interpreter Stack
 
     Externalizes '_stack_dumps' to be accessed by the user.
 
     Args:
         stack (list[inspect.FrameInfo]): Stack of frames to represent.
+        e (Exception, optional): Exception that was raised. Defaults to None.
+        package_name (str, optional): Name of the package to dump from the stack, otherwise non-exclusive if set to None. Defaults to None.
 
     Returns:
         str: Representation of the stack.
     """
-    return _stack_dumps(stack, package_name=None)
+    if e is None:
+        return _stack_dumps(stack, package_name=package_name)
+    return _stack_dumps(stack, package_name=package_name) + "\n" + _exception_dumps(e)
 
 
 def _dump(
@@ -412,7 +439,7 @@ def dump_on_exception(
     except Exception as e:
         trace = inspect.trace()
         if len(trace) > 1:
-            name = _dump(trace[1:], e=e, dump_path=dump_path)
+            name = _dump(stack=trace[1:], e=e, dump_path=dump_path)
             _logger.fatal(_DUMP_MSG.format(name=name))
 
         raise

@@ -2,12 +2,7 @@
 *
 
 # Except
-!__init__.py
-!__version__.py
-!base.py
-
-!tests/
-!tests/*
+!test_pformat.py
 
 !.gitignore
 !.git/

@@ -7,11 +7,11 @@
 Example of logger output:
 
 ```text
-[ 2022-11-17 10:16:09.0918  INFO  my_package.base ]  Something we want to log.
-[ 2022-11-17 10:16:09.0918  DEBUG  my_package.base ]  Something we want to log.
-[ 2022-11-17 10:16:09.0918  WARNING  my_package.base ]  Something we want to log.
-[ 2022-11-17 10:16:09.0918  ERROR  my_package.base ]  Something we want to log.
-[ 2022-11-17 10:16:09.0918  CRITICAL  my_package.base ]  Something we want to log.
+[ 2022-11-17 10:16:09.0918  INFO  yourapplication.base ]  Something we want to log.
+[ 2022-11-17 10:16:09.0918  DEBUG  yourapplication.base ]  Something we want to log.
+[ 2022-11-17 10:16:09.0918  WARNING  yourapplication.base ]  Something we want to log.
+[ 2022-11-17 10:16:09.0918  ERROR  yourapplication.base ]  Something we want to log.
+[ 2022-11-17 10:16:09.0918  CRITICAL  yourapplication.base ]  Something we want to log.
 ```
 
 Example of dictionary representation in dump:
@@ -49,7 +49,7 @@ class Example:
 ```
 
 ```text
-example = <my_package.Example>
+example = <yourapplication.Example>
   example.user_id = 'user_id' = example.user_id = 123456790
   example.profile = 'profile' = example.profile = <builtins.dict>
     example.profile['name'] = 'John Doe'
@@ -129,7 +129,7 @@ with yogger.dump_on_exception(
     raise SomeException
 ```
 
-This is equivalent to:
+This is nearly equivalent to:
 
 ```python
 import inspect
@@ -142,7 +142,7 @@ except Exception as e:
     trace = inspect.trace()
     if len(trace) > 1:
         with open("./stack_dump.txt", mode="a", encoding="utf-8") as f:
-            yogger.dump(f, trace[1:])
+            yogger.dump(f, trace[1:], e=e, package_name="yourapplication")
 ```
 
 ### Stacks
@@ -217,26 +217,30 @@ Context manager to dump a representation of the exception and trace stack to fil
 
 Function to write the representation of an interpreter stack using a file object.
 
-| Function Signature    |
-| :-------------------- |
-| dump(file_obj, stack) |
+| Function Signature                                   |
+| :--------------------------------------------------- |
+| dump(file_obj, stack, \*, e=None, package_name=None) |
 
-| Parameters                                                |                                 |
-| :-------------------------------------------------------- | :------------------------------ |
-| **file_obj**_(str \| io.TextIOBase \| io.BufferedIOBase)_ | File object to use for writing. |
-| **stack**_(list[inspect.FrameInfo])_                      | Stack of frames to dump.        |
+| Parameters                           |                                                                                     |
+| :----------------------------------- | :---------------------------------------------------------------------------------- |
+| **file_obj**_(io.TextIOBase)_        | File object to use for writing.                                                     |
+| **stack**_(list[inspect.FrameInfo])_ | Stack of frames to dump.                                                            |
+| **e**_(Exception \| None)_           | Exception that was raised.                                                          |
+| **package_name**_(str \| None)_      | Name of the package to dump from the stack, otherwise non-exclusive if set to None. |
 
 ### yogger.dumps
 
 Function to create a string representation of an interpreter stack.
 
-| Function Signature |
-| :----------------- |
-| dumps(stack)       |
+| Function Signature                          |
+| :------------------------------------------ |
+| dumps(stack, \*, e=None, package_name=None) |
 
-| Parameters                           |                               |
-| :----------------------------------- | :---------------------------- |
-| **stack**_(list[inspect.FrameInfo])_ | Stack of frames to represent. |
+| Parameters                           |                                                                                     |
+| :----------------------------------- | :---------------------------------------------------------------------------------- |
+| **stack**_(list[inspect.FrameInfo])_ | Stack of frames to represent.                                                       |
+| **e**_(Exception \| None)_           | Exception that was raised.                                                          |
+| **package_name**_(str \| None)_      | Name of the package to dump from the stack, otherwise non-exclusive if set to None. |
 
 ### yogger.pformat
 
