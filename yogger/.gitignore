@@ -6,9 +6,6 @@
 !__version__.py
 !base.py
 
-!tests/
-!tests/*
-
 !.gitignore
 !.git/
 !.git/*

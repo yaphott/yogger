@@ -3,9 +3,12 @@
 
 # Except
 !setup.py
+!pyproject.toml
 
 !yogger/
 !yogger/*
+!tests/
+!tests/*
 
 !LICENSE
 !NOTICE

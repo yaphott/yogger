@@ -21,14 +21,8 @@ This version of Yogger requires at least Python {}.{}, but you're trying to inst
     )
     sys.exit(1)
 
-# Publish to PyPi using `python3 setup.py publish`
-if sys.argv[-1] == "publish":
-    os.system("python setup.py sdist bdist_wheel")
-    os.system("twine upload dist/*")
-    sys.exit()
 
-
-def _globals_from_exec(filepath: str) -> dict:
+def _globals_from_py(filepath: str) -> dict:
     __globals = {}
     with open(filepath, mode="r", encoding="utf-8") as rf:
         exec(rf.read(), __globals)
@@ -37,10 +31,30 @@ def _globals_from_exec(filepath: str) -> dict:
 
 
 here = os.path.abspath(os.path.dirname(__file__))
-version = _globals_from_exec(os.path.join(here, "yogger", "__version__.py"))
-
-with open("README.md", mode="r", encoding="utf-8") as rf:
+version = _globals_from_py(os.path.join(here, "yogger", "__version__.py"))
+with open(os.path.join(here, "README.md"), mode="r", encoding="utf-8") as rf:
     long_description = rf.read()
+
+
+# Publish to PyPi using 'python3 setup.py publish'
+if sys.argv[-1] == "publish":
+    os.system("python3 setup.py sdist bdist_wheel")
+    os.system("twine upload dist/yogger-*.tar.gz dist/yogger-*.whl")
+    sys.exit()
+
+
+# Run tests
+if sys.argv[-1] == "test":
+    import unittest
+
+    # Default shared TestLoader instance
+    test_loader = unittest.defaultTestLoader
+    # Basic test runner that outputs to sys.stderr
+    test_runner = unittest.TextTestRunner()
+    # Discover all tests
+    test_suite = test_loader.discover(os.path.join(here, "tests"))
+    # Run the test suite
+    test_runner.run(test_suite)
 
 setuptools.setup(
     name=version["__title__"],
@@ -71,8 +85,6 @@ setuptools.setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: Implementation :: CPython",
-        "Programming Language :: Python :: Implementation :: PyPy",
         "Topic :: Utilities",
         "Topic :: System :: Logging",
         "Topic :: Software Development",
@@ -81,7 +93,7 @@ setuptools.setup(
     ],
     extras_require={},
     entry_points={},
-    keywords="yogger log logging dump stack trace locals",
+    keywords=["logging", "inspect", "trace", "stack", "dump", "dumps", "locals", "yogger"],
     project_urls={
         "Homepage": "https://github.com/yaphott/yogger",
     },

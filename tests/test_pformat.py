@@ -2,10 +2,10 @@
 import collections
 import requests
 import yogger
-from unittest import TestCase, main
+import unittest
 
 
-class PFormatTest(TestCase):
+class PFormatTest(unittest.TestCase):
     def test_bytes(self):
         value_to_test = b"this\nis\na\ntest"
         result_actual = yogger.pformat("value_to_test", value_to_test)
@@ -177,5 +177,5 @@ class PFormatTest(TestCase):
         self.assertRegexpMatches(result_actual, r"^r = <Response \[200\]>(?:\n(?: {2})+[^\n]+)+$")
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     unittest.main()
