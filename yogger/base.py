@@ -42,7 +42,7 @@ _DUMP_MSG = "".join(
         "\33[1m" if sys.platform != "win32" else "",
         'Dumped stack and locals to "{name}"',
         "\33[0m" if sys.platform != "win32" else "",
-        "\nCopy and paste the following to view:\n\n    cat '{name}'\n",
+        "\nCopy and paste the following to view:\n    cat '{name}'\n",
     )
 )
 
@@ -297,8 +297,7 @@ def _exception_dumps(e: Exception) -> str:
     e_repr = ""
     e_repr += "Exception:\n"
     e_repr += f"  {type(e).__module__}.{type(e).__name__}: {e!s}\n"
-    e_repr += f"  args: {e.args!r}\n"
-    e_repr += "\n"
+    e_repr += f"  args: {e.args!r}"
     return e_repr
 
 
@@ -343,27 +342,11 @@ def _stack_dumps(
             if ("self" in locals_) and hasattr(locals_["self"], "__dict__"):
                 stack_repr += "Object dict:\n"
                 stack_repr += repr(locals_["self"].__dict__)
-                stack_repr += "\n\n"
+                # Quick fix for now
+                # stack_repr += "\n\n"
 
-    return stack_repr
-
-
-def dump(
-    file_obj: io.TextIOBase,
-    stack: list[inspect.FrameInfo],
-    *,
-    e: Exception | None = None,
-    package_name: str | None = None,
-) -> None:
-    """Write the Representation of an Interpreter Stack using a File Object
-
-    Args:
-        file_obj (io.TextIOBase): File object to use for writing.
-        stack (list[inspect.FrameInfo]): Stack of frames to dump.
-        e (Exception, optional): Exception that was raised. Defaults to None.
-        package_name (str, optional): Name of the package to dump from the stack, otherwise non-exclusive if set to None. Defaults to None.
-    """
-    file_obj.write(dumps(stack, e=e, package_name=package_name))
+    # Quick fix for now
+    return stack_repr.rstrip("\n")
 
 
 def dumps(
@@ -386,7 +369,25 @@ def dumps(
     """
     if e is None:
         return _stack_dumps(stack, package_name=package_name)
-    return _stack_dumps(stack, package_name=package_name) + "\n" + _exception_dumps(e)
+    return _stack_dumps(stack, package_name=package_name) + "\n\n" + _exception_dumps(e)
+
+
+def dump(
+    file_obj: io.TextIOBase,
+    stack: list[inspect.FrameInfo],
+    *,
+    e: Exception | None = None,
+    package_name: str | None = None,
+) -> None:
+    """Write the Representation of an Interpreter Stack using a File Object
+
+    Args:
+        file_obj (io.TextIOBase): File object to use for writing.
+        stack (list[inspect.FrameInfo]): Stack of frames to dump.
+        e (Exception, optional): Exception that was raised. Defaults to None.
+        package_name (str, optional): Name of the package to dump from the stack, otherwise non-exclusive if set to None. Defaults to None.
+    """
+    file_obj.write(dumps(stack, e=e, package_name=package_name))
 
 
 def _dump(
@@ -404,7 +405,7 @@ def _dump(
     Returns:
         str: Path of the resulting dump.
     """
-    dump_repr = _stack_dumps(stack, package_name=_global_package_name) + "\n" + _exception_dumps(e)
+    dump_repr = dumps(stack, package_name=_global_package_name, e=e) + "\n"
     user_dump_path = dump_path or _global_dump_path
     if user_dump_path is not None:
         # User-provided path (assigned when user ran configure, or overridden in this method)
@@ -415,7 +416,7 @@ def _dump(
         # Temporary file
         with tempfile.NamedTemporaryFile(
             "w",
-            # Fix the prefix if the user forgot to run 'configure'
+            # Fix the prefix if the user did not run 'configure'
             prefix=f"{_global_package_name}_stack_and_locals" if _global_package_name is not None else "stack_and_locals",
             delete=False,
         ) as wf:
