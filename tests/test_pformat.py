@@ -1,6 +1,6 @@
 # Copyright Nicholas Londowski 2022. Apache 2.0 license, see LICENSE file.
 import collections
-import requests
+# import requests
 import yogger
 import unittest
 
@@ -24,12 +24,47 @@ class PFormatTest(unittest.TestCase):
         result_expected = "value_to_test = 'this\\nis\\na\\ntest'"
         self.assertEqual(result_actual, result_expected)
 
-    def test_tuple(self):
+    def test_set(self):
         # All values are of type str
         value_to_test = {"this", "is", "a", "test"}
         result_actual = yogger.pformat("value_to_test", value_to_test)
-        result_expected = "value_to_test = {'a', 'is', 'this', 'test'}"
-        self.assertEqual(result_actual, result_expected)
+        self.assertRegex(
+            result_actual,
+            (
+                r"^value_to_test = {"
+                + r"(?:"
+                + r"|".join(
+                    [
+                        r"'a', 'is', 'test', 'this'",
+                        r"'a', 'is', 'this', 'test'",
+                        r"'a', 'test', 'is', 'this'",
+                        r"'a', 'test', 'this', 'is'",
+                        r"'a', 'this', 'is', 'test'",
+                        r"'a', 'this', 'test', 'is'",
+                        r"'is', 'a', 'test', 'this'",
+                        r"'is', 'a', 'this', 'test'",
+                        r"'is', 'test', 'a', 'this'",
+                        r"'is', 'test', 'this', 'a'",
+                        r"'is', 'this', 'a', 'test'",
+                        r"'is', 'this', 'test', 'a'",
+                        r"'test', 'a', 'is', 'this'",
+                        r"'test', 'a', 'this', 'is'",
+                        r"'test', 'is', 'a', 'this'",
+                        r"'test', 'is', 'this', 'a'",
+                        r"'test', 'this', 'a', 'is'",
+                        r"'test', 'this', 'is', 'a'",
+                        r"'this', 'a', 'is', 'test'",
+                        r"'this', 'a', 'test', 'is'",
+                        r"'this', 'is', 'a', 'test'",
+                        r"'this', 'is', 'test', 'a'",
+                        r"'this', 'test', 'a', 'is'",
+                        r"'this', 'test', 'is', 'a'",
+                    ]
+                )
+                + r")"
+                + r"}$"
+            ),
+        )
         # All values are of type int
         value_to_test = {0, 1, 2, 3}
         result_actual = yogger.pformat("value_to_test", value_to_test)
@@ -163,19 +198,20 @@ class PFormatTest(unittest.TestCase):
   value_to_test[3] = deque(['test', 3])"""
         self.assertEqual(result_actual, result_expected)
 
-    def test_requests(self):
-        # NOTE: Request must be successful
-        # - Must start at the begining of the line
-        # - Every line after the first is indented with a multiple of 2 spaces
-        # - Should have no trailing whitespace
-        r = requests.get("https://api.github.com/events")
-        # Request that was made
-        result_actual = yogger.pformat("r.request", r.request)
-        self.assertRegexpMatches(result_actual, r"^r.request = <PreparedRequest \[GET\]>(?:\n(?: {2})+[^\n]+)+$")
-        # Response from request (includes original request)
-        result_actual = yogger.pformat("r", r)
-        self.assertRegexpMatches(result_actual, r"^r = <Response \[200\]>(?:\n(?: {2})+[^\n]+)+$")
+    # TODO
+    # def test_requests(self):
+    #     # NOTE: Request must be successful
+    #     # - Must start at the begining of the line
+    #     # - Every line after the first is indented with a multiple of 2 spaces
+    #     # - Should have no trailing whitespace
+    #     r = requests.get("https://api.github.com/events")
+    #     # Request that was made
+    #     result_actual = yogger.pformat("r.request", r.request)
+    #     self.assertRegex(result_actual, r"^r.request = <PreparedRequest \[GET\]>(?:\n(?: {2})+[^\n]+)+$")
+    #     # Response from request (includes original request)
+    #     result_actual = yogger.pformat("r", r)
+    #     self.assertRegex(result_actual, r"^r = <Response \[200\]>(?:\n(?: {2})+[^\n]+)+$")
 
 
-# if __name__ == "__main__":
-#     unittest.main()
+if __name__ == "__main__":
+    unittest.main()

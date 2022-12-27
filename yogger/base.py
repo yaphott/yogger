@@ -82,19 +82,18 @@ def install() -> None:
     _logger = logging.getLogger(__name__)
 
 
-def _apply_line_continuation(obj_repr: str) -> str:
+def _apply_line_continuation(msg: str) -> str:
     """Prefix with a Backslash and Indent if Contains Any Newlines
 
     Args:
-        obj_repr (str): Representation to apply line continuation to.
+        msg (str): Representation to apply line continuation to.
 
     Returns:
         str: String with line continuation and indent applied.
     """
-    if "\n" in obj_repr:
-        "\\\n  " + obj_repr.replace("\n", "\n  ")
-
-    return obj_repr
+    if "\n" in msg:
+        "\\\n  " + msg.replace("\n", "\n  ")
+    return msg
 
 
 def _requests_request_repr(name: str, request: Request) -> str:
@@ -107,25 +106,25 @@ def _requests_request_repr(name: str, request: Request) -> str:
     Returns:
         str: Formatted representation of a requests.Request object.
     """
-    req_repr = ""
-    req_repr += f"{name} = {request!r}"
-    req_repr += f"\n  {name}.method = {request.method}"
-    req_repr += f"\n  {name}.url = {request.url}"
-    req_repr += f"\n  {name}.headers = "
+    msg = ""
+    msg += f"{name} = {request!r}"
+    msg += f"\n  {name}.method = {request.method}"
+    msg += f"\n  {name}.url = {request.url}"
+    msg += f"\n  {name}.headers = "
     if not request.headers:
         # Empty or missing headers
-        req_repr += f"{request.headers!r}"
+        msg += f"{request.headers!r}"
     else:
-        req_repr += "\\"
+        msg += "\\"
         for field in request.headers:
-            req_repr += f'\n    {field} = {pformat("_", request.headers[field])}'
+            msg += f'\n    {field} = {pformat("_", request.headers[field])}'
 
     for attr in ("body", "params", "data"):
         if hasattr(request, attr) and getattr(request, attr):
-            req_repr += f"\n  {name}.{attr} = "
-            req_repr += pformat("_", getattr(request, attr)).replace("\n", "\n  ")
+            msg += f"\n  {name}.{attr} = "
+            msg += pformat("_", getattr(request, attr)).replace("\n", "\n  ")
 
-    return req_repr
+    return msg
 
 
 def _requests_response_repr(
@@ -144,31 +143,31 @@ def _requests_response_repr(
     Returns:
         str: Formatted representation of a requests.Response object.
     """
-    resp_repr = ""
-    resp_repr += f"{name} = {response!r}"
-    resp_repr += f"\n  {name}.url = {response.url}"
-    resp_repr += f"\n  {name}.request = "
-    resp_repr += pformat("_", response.request).replace("\n", "\n  ")
+    msg = ""
+    msg += f"{name} = {response!r}"
+    msg += f"\n  {name}.url = {response.url}"
+    msg += f"\n  {name}.request = "
+    msg += pformat("_", response.request).replace("\n", "\n  ")
     if include_history and response.history:
-        resp_repr += f"\n  {name}.history = ["
+        msg += f"\n  {name}.history = ["
         for prev_resp in response.history:
-            resp_repr += "\n    "
-            resp_repr += _requests_response_repr("_", prev_resp, include_history=False).replace("\n", "\n    ")
+            msg += "\n    "
+            msg += _requests_response_repr("_", prev_resp, include_history=False).replace("\n", "\n    ")
 
-        resp_repr += "\n  ]"
+        msg += "\n  ]"
 
-    resp_repr += f"\n  {name}.status_code = {response.status_code}"
-    resp_repr += f"\n  {name}.headers = "
+    msg += f"\n  {name}.status_code = {response.status_code}"
+    msg += f"\n  {name}.headers = "
     if not response.headers:
         # Empty or missing headers
-        resp_repr += f"{response.headers!r}"
+        msg += f"{response.headers!r}"
     else:
-        resp_repr += "\\"
+        msg += "\\"
         for field in response.headers:
-            resp_repr += f'\n    {field} = {pformat("_", response.headers[field])}'
+            msg += f'\n    {field} = {pformat("_", response.headers[field])}'
 
-    resp_repr += f'\n  {name}.content = {pformat("_", response.content)}'
-    return resp_repr
+    msg += f'\n  {name}.content = {pformat("_", response.content)}'
+    return msg
 
 
 def _requests_exception_repr(name: str, e: RequestException) -> str:
@@ -181,11 +180,11 @@ def _requests_exception_repr(name: str, e: RequestException) -> str:
     Returns:
         str: Formatted representation of a Requests exception.
     """
-    e_repr = ""
-    e_repr += f"{name} = {e!r}"
-    e_repr += "\n  " + pformat(f"{name}.request", e.request).replace("\n", "\n  ")
-    e_repr += "\n  " + pformat(f"{name}.response", e.response).replace("\n", "\n  ")
-    return e_repr
+    msg = ""
+    msg += f"{name} = {e!r}"
+    msg += "\n  " + pformat(f"{name}.request", e.request).replace("\n", "\n  ")
+    msg += "\n  " + pformat(f"{name}.response", e.response).replace("\n", "\n  ")
+    return msg
 
 
 def _dict_repr(name: str, value: dict) -> str:
@@ -198,10 +197,10 @@ def _dict_repr(name: str, value: dict) -> str:
     Returns:
         str: Formatted representation of a dictionary variable.
     """
-    dict_repr = ""
-    dict_repr += f"{name} = <{type(value).__module__}.{type(value).__name__}>\n  "
-    dict_repr += "\n  ".join(pformat(f"{name}[{k!r}]", v).replace("\n", "\n  ") for k, v in value.items())
-    return dict_repr
+    msg = ""
+    msg += f"{name} = <{type(value).__module__}.{type(value).__name__}>\n  "
+    msg += "\n  ".join(pformat(f"{name}[{k!r}]", v).replace("\n", "\n  ") for k, v in value.items())
+    return msg
 
 
 def _object_container_repr(name: str, value: collections.abc.Collection) -> str:
@@ -214,18 +213,18 @@ def _object_container_repr(name: str, value: collections.abc.Collection) -> str:
     Returns:
         str: Formatted representation of a collection variable variable.
     """
-    cont_repr = ""
+    msg = ""
     if all(isinstance(v, (int, str)) for v in value):
         # Single line (all values are int or str)
-        cont_repr = f"{name} = {value!r}"
+        msg = f"{name} = {value!r}"
     else:
         # Multiple lines (not all values are int or str)
-        cont_repr += f"{name} = <{type(value).__module__}.{type(value).__name__}>\n  "
-        cont_repr += "\n  ".join(pformat(f"{name}[{i}]", v).replace("\n", "\n  ") for i, v in enumerate(value))
+        msg += f"{name} = <{type(value).__module__}.{type(value).__name__}>\n  "
+        msg += "\n  ".join(pformat(f"{name}[{i}]", v).replace("\n", "\n  ") for i, v in enumerate(value))
 
     # Apply line continuation if contains any newlines
-    cont_repr = _apply_line_continuation(cont_repr)
-    return cont_repr
+    msg = _apply_line_continuation(msg)
+    return msg
 
 
 def _dataclass_repr(name: str, value: dict) -> str:
@@ -238,12 +237,10 @@ def _dataclass_repr(name: str, value: dict) -> str:
     Returns:
         str: Formatted representation of a dataclass variable.
     """
-    dataclass_repr = ""
-    dataclass_repr += f"{name} = <{type(value).__module__}.{type(value).__name__}>\n  "
-    dataclass_repr += "\n  ".join(
-        pformat(f"{name}.{f.name}", f.name) + " = " + pformat(f"{name}.{f.name}", getattr(value, f.name)).replace("\n", "\n  ") for f in dataclasses.fields(value)
-    )
-    return dataclass_repr
+    msg = ""
+    msg += f"{name} = <{type(value).__module__}.{type(value).__name__}>\n  "
+    msg += "\n  ".join(pformat(f"{name}.{f.name}", f.name) + " = " + pformat(f"{name}.{f.name}", getattr(value, f.name)).replace("\n", "\n  ") for f in dataclasses.fields(value))
+    return msg
 
 
 def pformat(name: str, value: Any) -> str:
@@ -279,13 +276,13 @@ def pformat(name: str, value: Any) -> str:
         return _dataclass_repr(name, value)
 
     # Other (also includes string, bytes, ranges, etc.)
-    obj_repr = f"{name} = {value!r}"
+    msg = f"{name} = {value!r}"
     # Apply line continuation if contains any newlines
-    obj_repr = _apply_line_continuation(obj_repr)
-    return obj_repr
+    msg = _apply_line_continuation(msg)
+    return msg
 
 
-def _exception_dumps(e: Exception) -> str:
+def _exception_dumps(*, e: Exception) -> str:
     """Create a String Representation of an Exception
 
     Args:
@@ -294,11 +291,11 @@ def _exception_dumps(e: Exception) -> str:
     Returns:
         str: Representation of the stack.
     """
-    e_repr = ""
-    e_repr += "Exception:\n"
-    e_repr += f"  {type(e).__module__}.{type(e).__name__}: {e!s}\n"
-    e_repr += f"  args: {e.args!r}"
-    return e_repr
+    msg = ""
+    msg += "Exception:\n"
+    msg += f"  {type(e).__module__}.{type(e).__name__}: {e!s}\n"
+    msg += f"  args: {e.args!r}"
+    return msg
 
 
 def _stack_dumps(
@@ -314,7 +311,7 @@ def _stack_dumps(
     Returns:
         str: Representation of the stack.
     """
-    stack_repr = ""
+    msg = ""
     modules = [inspect.getmodule(frame_record[0]) for frame_record in stack]
     for i, (module, frame_record) in enumerate(zip(modules, stack)):
         if module is None:
@@ -331,22 +328,19 @@ def _stack_dumps(
         # Only frames relating to the user's package if package_name is provided
         if (package_name is None) or module.__name__.startswith(f"{package_name}.") or (module.__name__ == package_name):
             locals_ = frame_record[0].f_locals
-            stack_repr += f'Locals from file "{frame_record.filename}", line {frame_record.lineno}, in {frame_record.function}:\n'
+            msg += f'Locals from file "{frame_record.filename}", line {frame_record.lineno}, in {frame_record.function}:\n'
             for var_name in locals_:
                 var_value = locals_[var_name]
-                stack_repr += f"  {var_name} {type(var_value)} = "
-                stack_repr += pformat(var_name, var_value).replace("\n", "\n  ")
-                stack_repr += "\n"
+                msg += f"  {var_name} {type(var_value)} = "
+                msg += pformat(var_name, var_value).replace("\n", "\n  ")
+                msg += "\n"
 
-            stack_repr += "\n"
+            msg += "\n"
             if ("self" in locals_) and hasattr(locals_["self"], "__dict__"):
-                stack_repr += "Object dict:\n"
-                stack_repr += repr(locals_["self"].__dict__)
-                # Quick fix for now
-                # stack_repr += "\n\n"
+                msg += "Object dict:\n"
+                msg += repr(locals_["self"].__dict__)
 
-    # Quick fix for now
-    return stack_repr.rstrip("\n")
+    return msg.rstrip("\n")
 
 
 def dumps(
@@ -368,12 +362,12 @@ def dumps(
         str: Representation of the stack.
     """
     if e is None:
-        return _stack_dumps(stack, package_name=package_name)
-    return _stack_dumps(stack, package_name=package_name) + "\n\n" + _exception_dumps(e)
+        return _stack_dumps(stack=stack, package_name=package_name)
+    return _stack_dumps(stack=stack, package_name=package_name) + "\n\n" + _exception_dumps(e=e)
 
 
 def dump(
-    file_obj: io.TextIOBase,
+    fp: io.TextIOBase | io.BytesIO,
     stack: list[inspect.FrameInfo],
     *,
     e: Exception | None = None,
@@ -382,15 +376,19 @@ def dump(
     """Write the Representation of an Interpreter Stack using a File Object
 
     Args:
-        file_obj (io.TextIOBase): File object to use for writing.
+        fp (io.TextIOBase | io.BytesIO): File object to use for writing.
         stack (list[inspect.FrameInfo]): Stack of frames to dump.
         e (Exception, optional): Exception that was raised. Defaults to None.
         package_name (str, optional): Name of the package to dump from the stack, otherwise non-exclusive if set to None. Defaults to None.
     """
-    file_obj.write(dumps(stack, e=e, package_name=package_name))
+    result = dumps(stack, e=e, package_name=package_name)
+    if isinstance(fp, io.BytesIO):
+        result = result.encode("utf-8")
+    fp.write(result)
 
 
 def _dump(
+    *,
     stack: list[inspect.FrameInfo],
     e: Exception,
     dump_path: str | bytes | os.PathLike,
@@ -405,12 +403,12 @@ def _dump(
     Returns:
         str: Path of the resulting dump.
     """
-    dump_repr = dumps(stack, package_name=_global_package_name, e=e) + "\n"
+    msg = dumps(stack, package_name=_global_package_name, e=e) + "\n"
     user_dump_path = dump_path or _global_dump_path
     if user_dump_path is not None:
         # User-provided path (assigned when user ran configure, or overridden in this method)
         with open(_resolve_path(user_dump_path), mode="a", encoding="utf-8") as wf:
-            wf.write(dump_repr)
+            wf.write(msg)
             return wf.name
     else:
         # Temporary file
@@ -420,7 +418,7 @@ def _dump(
             prefix=f"{_global_package_name}_stack_and_locals" if _global_package_name is not None else "stack_and_locals",
             delete=False,
         ) as wf:
-            wf.write(dump_repr)
+            wf.write(msg)
             return wf.name
 
 
@@ -466,6 +464,7 @@ def configure(
     verbosity: int = 0,
     dump_locals: bool = False,
     dump_path: str | bytes | os.PathLike | None = None,
+    remove_handlers: bool = True,
 ) -> None:
     """Prepare for Logging
 
@@ -474,6 +473,7 @@ def configure(
         verbosity (int, optional): Level of verbosity (0-2) for log messages. Defaults to 0.
         dump_locals (bool, optional): Dump the caller's stack when logging with a level of warning or higher. Defaults to False.
         dump_path (str | bytes | os.PathLike, optional): Custom path to use when dumping with 'dump_on_exception' or when 'dump_locals=True', otherwise use a temporary path if None. Defaults to None.
+        remove_handlers (bool, optional): Remove existing logging handlers before adding the new stream handler. Defaults to True.
     """
     global _global_package_name
     _global_package_name = package_name
@@ -493,7 +493,8 @@ def configure(
         _set_levels(root_logger, logging.INFO if verbosity == 1 else logging.DEBUG)
 
     # Remove existing handlers
-    _remove_handlers(root_logger)
+    if remove_handlers:
+        _remove_handlers(root_logger)
 
     # Add a new stream handler
     handler = logging.StreamHandler()

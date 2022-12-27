@@ -158,8 +158,8 @@ import inspect
 ```python
 stack = inspect.stack()
 if len(stack) > 2:
-    with open("./example.log", mode="w", encoding="utf-8") as f:
-        yogger.dump(f, stack[2:][::-1])
+    with open("./example.log", mode="w", encoding="utf-8") as fp:
+        yogger.dump(fp, stack[2:][::-1])
 ```
 
 If you simply want the string representation, use the `yogger.dumps` function:
@@ -190,9 +190,9 @@ Function to install the logger class and instantiate the global logger.
 
 Function to prepare for logging.
 
-| Function Signature                                                          |
-| :-------------------------------------------------------------------------- |
-| configure(package_name, \*, verbosity=0, dump_locals=False, dump_path=None) |
+| Function Signature                                                                                |
+| :------------------------------------------------------------------------------------------------ |
+| configure(package_name, \*, verbosity=0, dump_locals=False, dump_path=None, remove_handlers=True) |
 
 | Parameters                                           |                                                                                                                              |
 | :--------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
@@ -200,6 +200,7 @@ Function to prepare for logging.
 | **verbosity**_(int)_                                 | Level of verbosity (0-2) for log messages.                                                                                   |
 | **dump_locals**_(bool)_                              | Dump the caller's stack when logging with a level of warning or higher.                                                      |
 | **dump_path**_(str \| bytes \| os.PathLike \| None)_ | Custom path to use when dumping with `dump_on_exception` or when `dump_locals=True`, otherwise use a temporary path if None. |
+| **remove_handlers**_(bool)_                          | Remove existing logging handlers before adding the new stream handler.                                                       |
 
 ### yogger.dump_on_exception
 
@@ -217,16 +218,16 @@ Context manager to dump a representation of the exception and trace stack to fil
 
 Function to write the representation of an interpreter stack using a file object.
 
-| Function Signature                                   |
-| :--------------------------------------------------- |
-| dump(file_obj, stack, \*, e=None, package_name=None) |
+| Function Signature                             |
+| :--------------------------------------------- |
+| dump(fp, stack, \*, e=None, package_name=None) |
 
-| Parameters                           |                                                                                     |
-| :----------------------------------- | :---------------------------------------------------------------------------------- |
-| **file_obj**_(io.TextIOBase)_        | File object to use for writing.                                                     |
-| **stack**_(list[inspect.FrameInfo])_ | Stack of frames to dump.                                                            |
-| **e**_(Exception \| None)_           | Exception that was raised.                                                          |
-| **package_name**_(str \| None)_      | Name of the package to dump from the stack, otherwise non-exclusive if set to None. |
+| Parameters                            |                                                                                     |
+| :------------------------------------ | :---------------------------------------------------------------------------------- |
+| **fp**_(io.TextIOBase \| io.BytesIO)_ | File object to use for writing.                                                     |
+| **stack**_(list[inspect.FrameInfo])_  | Stack of frames to dump.                                                            |
+| **e**_(Exception \| None)_            | Exception that was raised.                                                          |
+| **package_name**_(str \| None)_       | Name of the package to dump from the stack, otherwise non-exclusive if set to None. |
 
 ### yogger.dumps
 
