@@ -2,10 +2,12 @@
 *
 
 # Except
-!__init__.py
-!__version__.py
-!base.py
+!yogger/
+!yogger/*
 
+!LICENSE
+!NOTICE
+!README.md
 !.gitignore
 !.git/
 !.git/*

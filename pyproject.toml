@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yogger"
+description = "Ideal logging setup with utilities to effectively represent interpreter stacks."
+readme = "README.md"
+requires-python = ">=3.9,<4"
+license = {text = "Apache-2.0"}
+keywords = ["logging", "inspect", "trace", "stack", "locals", "dump", "dumps", "yogger"]
+authors = [
+    {name = "Nicholas Londowski", email = "yaphott@proton.me"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Utilities",
+    "Topic :: System :: Logging",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = []
+dynamic = ["version"]
+
+[tool.setuptools]
+packages = ["yogger"]
+package-dir = {"" = "src"}
+
+[tool.setuptools.dynamic]
+version = {attr = "yogger.__version__"}
+
+[project.urls]
+Homepage = "https://github.com/yaphott/yogger"
+Repository = "https://github.com/yaphott/yogger"

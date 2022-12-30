@@ -46,7 +46,6 @@ _DUMP_MSG = "".join(
     )
 )
 
-
 class Yogger(logging.Logger):
     def _log_with_stack(self, level: int, *args: tuple, **kwargs: dict):
         super().log(level, *args, **kwargs)
@@ -72,7 +71,6 @@ class Yogger(logging.Logger):
             self._log_with_stack(level, *args, **kwargs)
         else:
             super().log(level, *args, **kwargs)
-
 
 def install() -> None:
     """Install the Yogger Logger Class and Instantiate the Global Logger"""
@@ -342,7 +340,6 @@ def _stack_dumps(
 
     return msg.rstrip("\n")
 
-
 def dumps(
     stack: list[inspect.FrameInfo],
     *,
@@ -420,7 +417,6 @@ def _dump(
         ) as wf:
             wf.write(msg)
             return wf.name
-
 
 @contextlib.contextmanager
 def dump_on_exception(

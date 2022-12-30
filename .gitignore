@@ -5,13 +5,12 @@
 !setup.py
 !pyproject.toml
 
-!yogger/
-!yogger/*
+!src/
+!src/*
 !tests/
 !tests/*
 
 !LICENSE
-!NOTICE
 !README.md
 !.gitignore
 !.git/

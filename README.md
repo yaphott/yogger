@@ -4,61 +4,7 @@
 
 > Supports `requests.Request` and `requests.Response` objects if the **Requests** package is installed.
 
-Example of logger output:
-
-```text
-[ 2022-11-17 10:16:09.0918  INFO  yourapplication.base ]  Something we want to log.
-[ 2022-11-17 10:16:09.0918  DEBUG  yourapplication.base ]  Something we want to log.
-[ 2022-11-17 10:16:09.0918  WARNING  yourapplication.base ]  Something we want to log.
-[ 2022-11-17 10:16:09.0918  ERROR  yourapplication.base ]  Something we want to log.
-[ 2022-11-17 10:16:09.0918  CRITICAL  yourapplication.base ]  Something we want to log.
-```
-
-Example of dictionary representation in dump:
-
-```python
-example = {
-    "user_id": 123456790,
-    "profile": {
-        "name": "John Doe",
-        "birthdate": datetime.date(2000, 1, 1),
-        "weight_kg": 86.18,
-    },
-    "video_ids": [123, 456, 789],
-}
-```
-
-```text
-example = <builtins.dict>
-  example['user_id'] = 123456790
-  example['profile'] = <builtins.dict>
-    example['profile']['name'] = 'John Doe'
-    example['profile']['birthdate'] = datetime.date(2000, 1, 1)
-    example['profile']['weight_kg'] = 86.18
-  example['video_ids'] = [123, 456, 789]
-```
-
-Similarly for a dataclass:
-
-```python
-@dataclasses.dataclass
-class Example:
-    user_id: int
-    profile: dict[str, str | float | datetime.date]
-    video_ids: list[int]
-```
-
-```text
-example = <yourapplication.Example>
-  example.user_id = 'user_id' = example.user_id = 123456790
-  example.profile = 'profile' = example.profile = <builtins.dict>
-    example.profile['name'] = 'John Doe'
-    example.profile['birthdate'] = datetime.date(2000, 1, 1)
-    example.profile['weight_kg'] = 86.18
-  example.video_ids = 'video_ids' = example.video_ids = [123, 456, 789]
-```
-
-## Requirements:
+### Requirements:
 
 **Yogger** requires Python 3.9 or higher, is platform independent, and requires no outside dependencies.
 
@@ -99,14 +45,70 @@ def _cli():
     yogger.configure(__name__, verbosity=1)
 ```
 
+### Output
+
+Example of logger output:
+
+```text
+[ 2022-11-17 10:16:09.0918  INFO  my_package ]  Something we want to log.
+[ 2022-11-17 10:16:09.0918  DEBUG  my_package ]  Something we want to log.
+[ 2022-11-17 10:16:09.0918  WARNING  my_package ]  Something we want to log.
+[ 2022-11-17 10:16:09.0918  ERROR  my_package ]  Something we want to log.
+[ 2022-11-17 10:16:09.0918  CRITICAL  my_package ]  Something we want to log.
+```
+
+Example of dictionary representation in dump:
+
+```python
+example = {
+    "user_id": 123456790,
+    "profile": {
+        "name": "John Doe",
+        "birthdate": datetime.date(2000, 1, 1),
+        "weight_kg": 86.18,
+    },
+    "video_ids": [123, 456, 789],
+}
+```
+
+```text
+example = <builtins.dict>
+  example['user_id'] = 123456790
+  example['profile'] = <builtins.dict>
+    example['profile']['name'] = 'John Doe'
+    example['profile']['birthdate'] = datetime.date(2000, 1, 1)
+    example['profile']['weight_kg'] = 86.18
+  example['video_ids'] = [123, 456, 789]
+```
+
+Similarly for a dataclass:
+
+```python
+@dataclasses.dataclass
+class Example:
+    user_id: int
+    profile: dict[str, str | float | datetime.date]
+    video_ids: list[int]
+```
+
+```text
+example = <my_package.Example>
+  example.user_id = 'user_id' = example.user_id = 123456790
+  example.profile = 'profile' = example.profile = <builtins.dict>
+    example.profile['name'] = 'John Doe'
+    example.profile['birthdate'] = datetime.date(2000, 1, 1)
+    example.profile['weight_kg'] = 86.18
+  example.video_ids = 'video_ids' = example.video_ids = [123, 456, 789]
+```
+
 ### About the `package_name` parameter
 
 The `package_name` parameter gives Yogger an idea of what belongs to your application. This name is used to identify which frames to dump in the stack. So it’s important what you provide there. If you are using a single module, `__name__` is always the correct value. If you are using a package, it’s usually recommended to hardcode the name of your package there.
 
-For example, if your application is defined in "yourapplication/app.py", you should create it with one of the two versions below:
+For example, if your application is defined in "my_package/app.py", you should create it with one of the two versions below:
 
 ```python
-yogger.configure("yourapplication")
+yogger.configure("my_package")
 ```
 
 ```python
@@ -142,7 +144,7 @@ except Exception as e:
     trace = inspect.trace()
     if len(trace) > 1:
         with open("./stack_dump.txt", mode="a", encoding="utf-8") as f:
-            yogger.dump(f, trace[1:], e=e, package_name="yourapplication")
+            yogger.dump(f, trace[1:], e=e, package_name="my_package")
 ```
 
 ### Stacks
