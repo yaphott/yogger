@@ -13,7 +13,7 @@
 Most stable version from [**PyPi**](https://pypi.org/project/yogger/):
 
 ```bash
-pip install yogger
+python3 -m pip install yogger
 ```
 
 Development version from [**GitHub**](https://github.com/yaphott/yogger):
@@ -21,7 +21,7 @@ Development version from [**GitHub**](https://github.com/yaphott/yogger):
 ```bash
 git clone git+https://github.com/yaphott/yogger.git
 cd yogger
-pip install .
+python3 -m pip install -e .
 ```
 
 ## Usage
