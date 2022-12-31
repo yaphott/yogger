@@ -78,50 +78,6 @@ Example of logger output:
 
 ## Support for dumping the stack
 
-Example of dictionary representation in dump:
-
-```python
-example = {
-    "user_id": 123456790,
-    "profile": {
-        "name": "John Doe",
-        "birthdate": datetime.date(2000, 1, 1),
-        "weight_kg": 86.18,
-    },
-    "video_ids": [123, 456, 789],
-}
-```
-
-```text
-example = <builtins.dict>
-  example['user_id'] = 123456790
-  example['profile'] = <builtins.dict>
-    example['profile']['name'] = 'John Doe'
-    example['profile']['birthdate'] = datetime.date(2000, 1, 1)
-    example['profile']['weight_kg'] = 86.18
-  example['video_ids'] = [123, 456, 789]
-```
-
-Similarly for a dataclass:
-
-```python
-@dataclasses.dataclass
-class Example:
-    user_id: int
-    profile: dict[str, str | float | datetime.date]
-    video_ids: list[int]
-```
-
-```text
-example = <my_package.Example>
-  example.user_id = 'user_id' = example.user_id = 123456790
-  example.profile = 'profile' = example.profile = <builtins.dict>
-    example.profile['name'] = 'John Doe'
-    example.profile['birthdate'] = datetime.date(2000, 1, 1)
-    example.profile['weight_kg'] = 86.18
-  example.video_ids = 'video_ids' = example.video_ids = [123, 456, 789]
-```
-
 ### Traces and exceptions
 
 Using the `dump_on_exception` **context manager** dumps the exception and trace if an exception is raised:
@@ -173,6 +129,52 @@ If you simply want the string representation, use the `yogger.dumps` function:
 stack = inspect.stack()
 if len(stack) > 2:
     trace_repr = yogger.dumps(stack[2:][::-1])
+```
+
+### Output
+
+Example of dictionary representation in dump:
+
+```python
+example = {
+    "user_id": 123456790,
+    "profile": {
+        "name": "John Doe",
+        "birthdate": datetime.date(2000, 1, 1),
+        "weight_kg": 86.18,
+    },
+    "video_ids": [123, 456, 789],
+}
+```
+
+```text
+example = <builtins.dict>
+  example['user_id'] = 123456790
+  example['profile'] = <builtins.dict>
+    example['profile']['name'] = 'John Doe'
+    example['profile']['birthdate'] = datetime.date(2000, 1, 1)
+    example['profile']['weight_kg'] = 86.18
+  example['video_ids'] = [123, 456, 789]
+```
+
+Similarly for a dataclass:
+
+```python
+@dataclasses.dataclass
+class Example:
+    user_id: int
+    profile: dict[str, str | float | datetime.date]
+    video_ids: list[int]
+```
+
+```text
+example = <my_package.Example>
+  example.user_id = 'user_id' = example.user_id = 123456790
+  example.profile = 'profile' = example.profile = <builtins.dict>
+    example.profile['name'] = 'John Doe'
+    example.profile['birthdate'] = datetime.date(2000, 1, 1)
+    example.profile['weight_kg'] = 86.18
+  example.video_ids = 'video_ids' = example.video_ids = [123, 456, 789]
 ```
 
 ---
