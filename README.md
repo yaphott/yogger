@@ -4,6 +4,24 @@
 
 > Supports `requests.Request` and `requests.Response` objects if the **Requests** package is installed.
 
+Example of common usage:
+
+```python
+import logging
+import yogger
+
+logger = logging.getLogger(__name__)
+
+def main():
+    yogger.install()
+    yogger.configure(__name__, verbosity=2)
+    with yogger.dump_on_exception():
+        # Code goes here
+
+if __name__ == "__main__":
+    main()
+```
+
 ### Requirements:
 
 **Yogger** requires Python 3.9 or higher, is platform independent, and requires no outside dependencies.
@@ -40,9 +58,10 @@ Install the logger class and configure with your package name:
 > Place at the start of the top-level function.
 
 ```python
-def _cli():
+def main():
     yogger.install()
-    yogger.configure(__name__, verbosity=1)
+    yogger.configure(__name__)
+    # Code goes here
 ```
 
 ### Output
@@ -56,6 +75,8 @@ Example of logger output:
 [ 2022-11-17 10:16:09.0918  ERROR  my_package ]  Something we want to log.
 [ 2022-11-17 10:16:09.0918  CRITICAL  my_package ]  Something we want to log.
 ```
+
+## Support for dumping the stack
 
 Example of dictionary representation in dump:
 
@@ -100,24 +121,6 @@ example = <my_package.Example>
     example.profile['weight_kg'] = 86.18
   example.video_ids = 'video_ids' = example.video_ids = [123, 456, 789]
 ```
-
-### About the `package_name` parameter
-
-The `package_name` parameter gives Yogger an idea of what belongs to your application. This name is used to identify which frames to dump in the stack. So it’s important what you provide there. If you are using a single module, `__name__` is always the correct value. If you are using a package, it’s usually recommended to hardcode the name of your package there.
-
-For example, if your application is defined in "my_package/app.py", you should create it with one of the two versions below:
-
-```python
-yogger.configure("my_package")
-```
-
-```python
-yogger.configure(__name__.split(".")[0])
-```
-
-Why is that? The application will work even with `__name__`, thanks to how resources are looked up. However, it will make debugging more painful. Yogger makes assumptions based on the import name of your application. If the import name is not properly set up, that debugging information may be lost.
-
-## Support for dumping the stack
 
 ### Traces and exceptions
 
@@ -175,6 +178,22 @@ if len(stack) > 2:
 ---
 
 ## Library
+
+### About the `package_name` parameter
+
+The `package_name` parameter gives Yogger an idea of what belongs to your application. This name is used to identify which frames to dump in the stack. So it’s important what you provide there. If you are using a single module, `__name__` is always the correct value. If you are using a package, it’s usually recommended to hardcode the name of your package there.
+
+For example, if your application is defined in "my_package/app.py", you should create it with one of the two versions below:
+
+```python
+yogger.configure("my_package")
+```
+
+```python
+yogger.configure(__name__.split(".")[0])
+```
+
+Why is that? The application will work even with `__name__`, thanks to how resources are looked up. However, it will make debugging more painful. Yogger makes assumptions based on the import name of your application. If the import name is not properly set up, that debugging information may be lost.
 
 ### yogger.install
 

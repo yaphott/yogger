@@ -38,7 +38,6 @@ _LOG_FMT = "[ {asctime}.{msecs:04.0f}  \33[1m{levelname}\33[0m  {name} ]  {messa
 _DATE_FMT = "%Y-%m-%d %H:%M:%S"
 _DUMP_MSG = "".join(
     (
-        "\n\n",
         "\33[1m" if sys.platform != "win32" else "",
         'Dumped stack and locals to "{name}"',
         "\33[0m" if sys.platform != "win32" else "",
